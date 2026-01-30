@@ -4,229 +4,198 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AOUSE</title>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
 <style>
-*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto}
-body{margin:0;background:#0e0e11;color:white}
-header{height:56px;background:#111;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid #222}
-nav{position:fixed;bottom:0;width:100%;height:60px;background:#111;display:flex}
-nav button{flex:1;border:none;background:none;color:#aaa;font-size:13px}
-nav button.active{color:#fff}
-.container{padding:12px;padding-bottom:80px}
-.card{background:#151518;border-radius:22px;padding:14px;margin-bottom:12px}
-input,textarea{width:100%;padding:10px;border:none;border-radius:12px;background:#1f1f24;color:white;margin-top:6px}
-button.primary{background:#2563eb;border:none;border-radius:14px;color:white;padding:10px;width:100%;margin-top:8px}
-.avatar{width:36px;height:36px;border-radius:50%;background:#333;object-fit:cover}
-.row{display:flex;align-items:center;gap:10px}
-.chat-row{background:#151518;padding:12px;border-radius:18px;margin-bottom:10px;display:flex;align-items:center;gap:10px}
-.msg-left,.msg-right{max-width:70%;padding:10px;border-radius:14px;margin:6px 0}
-.msg-left{background:#1f1f24}
-.msg-right{background:#2563eb;margin-left:auto}
-.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center}
-.modal{background:#151518;padding:20px;border-radius:22px;width:320px}
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont;
+background:#fff;
+}
+
+header{
+padding:14px 18px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+border-bottom:1px solid #eee;
+}
+
+button{
+border:none;
+border-radius:16px;
+padding:8px 14px;
+background:#111;
+color:white;
+}
+
+.container{
+padding:15px;
+max-width:800px;
+margin:auto;
+}
+
+.card{
+background:#f7f7f7;
+border-radius:22px;
+padding:15px;
+margin-bottom:12px;
+}
+
+.profile{
+width:36px;
+height:36px;
+border-radius:50%;
+background:#222;
+color:white;
+display:flex;
+align-items:center;
+justify-content:center;
+font-weight:bold;
+}
+
+.modal-bg{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.4);
+display:none;
+align-items:center;
+justify-content:center;
+}
+
+.modal{
+background:white;
+border-radius:20px;
+padding:20px;
+width:320px;
+}
+
+input,textarea{
+width:100%;
+padding:8px;
+border-radius:12px;
+border:1px solid #ddd;
+margin-top:6px;
+}
+
+.chat{
+display:flex;
+margin:6px 0;
+}
+
+.me{
+justify-content:flex-end;
+}
+
+.bubble{
+background:#111;
+color:white;
+padding:10px 14px;
+border-radius:18px;
+max-width:70%;
+}
+
+.other .bubble{
+background:#eee;
+color:black;
+}
 </style>
 </head>
+
 <body>
 
 <header>
- <b>AOUSE</b>
- <div id="userArea"><button onclick="openLogin()">ARRIVE</button></div>
+<b>AOUSE</b>
+<div id="userBar">
+<button onclick="openLogin()">ARRIVE</button>
+</div>
 </header>
 
-<div class="container" id="view"></div>
-
-<nav>
- <button onclick="openCommunity()" id="tabC">커뮤니티</button>
- <button onclick="openChatList()" id="tabT">채팅</button>
- <button onclick="openProfile()" id="tabP">프로필</button>
-</nav>
+<div class="container" id="postList"></div>
 
 <!-- LOGIN -->
-<div class="modal-bg" id="loginModal">
- <div class="modal">
- <h3>ARRIVE</h3>
- <input id="email" placeholder="Email">
- <input id="pw" type="password" placeholder="Password">
- <button class="primary" onclick="login()">GO</button>
- </div>
+<div class="modal-bg" id="loginBox">
+<div class="modal">
+<h3>ARRIVE</h3>
+<input id="email" placeholder="ALLOW">
+<input id="pw" type="password" placeholder="ACODE">
+<button onclick="login()">GO</button>
+</div>
 </div>
 
-<!-- PROFILE -->
-<div class="modal-bg" id="profileModal">
- <div class="modal">
- <h3>프로필</h3>
- <input id="nickname" placeholder="닉네임">
- <input type="file" id="avatarFile">
- <button class="primary" onclick="saveProfile()">저장</button>
- </div>
+<!-- WRITE -->
+<div class="modal-bg" id="writeBox">
+<div class="modal">
+<h3>WRITE</h3>
+<input id="title">
+<textarea id="content"></textarea>
+<button onclick="savePost()">POST</button>
+</div>
 </div>
 
 <script>
-// Firebase
-const firebaseConfig={
- apiKey:"YOUR_KEY",
- authDomain:"YOUR_DOMAIN",
- projectId:"YOUR_PROJECT",
- storageBucket:"YOUR_BUCKET",
- appId:"YOUR_APPID"
+const firebaseConfig = {
+ apiKey: "YOUR_API_KEY",
+ authDomain: "YOUR_DOMAIN",
+ projectId: "YOUR_PROJECT_ID"
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const auth=firebase.auth();
 const db=firebase.firestore();
-const storage=firebase.storage();
 
-let currentUser=null;
-let currentRoom=null;
+let user=null;
 
-// ---------- AUTH ----------
-function openLogin(){loginModal.style.display='flex'}
+function openLogin(){loginBox.style.display="flex"}
+function openWrite(){writeBox.style.display="flex"}
 
 function login(){
  auth.signInWithEmailAndPassword(email.value,pw.value)
  .catch(()=>auth.createUserWithEmailAndPassword(email.value,pw.value))
- .then(()=>loginModal.style.display='none');
 }
 
 auth.onAuthStateChanged(u=>{
- currentUser=u;
+ user=u;
  if(u){
-  userArea.innerHTML=`<button onclick="auth.signOut()">LOGOUT</button>`;
-  openCommunity();
+ userBar.innerHTML=`<button onclick="openWrite()">WRITE</button> <button onclick="auth.signOut()">LOGOUT</button>`;
+ }
+ else{
+ userBar.innerHTML=`<button onclick="openLogin()">ARRIVE</button>`;
  }
 });
 
-// ---------- COMMUNITY ----------
-function openCommunity(){
- tabC.classList.add('active');tabT.classList.remove('active');tabP.classList.remove('active');
- view.innerHTML=`
- <div class='card'>
- <textarea id='postText' placeholder='글 작성'></textarea>
- <button class='primary' onclick='addPost()'>등록</button>
- </div>
- <div id='postList'></div>`;
+function savePost(){
+ db.collection("posts").add({
+ title:title.value,
+ content:content.value,
+ uid:user.uid,
+ time:Date.now()
+ });
+ writeBox.style.display="none";
+}
 
- db.collection('posts').orderBy('time','desc').onSnapshot(s=>{
+db.collection("posts").orderBy("time","desc")
+.onSnapshot(snap=>{
  postList.innerHTML="";
- s.forEach(d=>{
- const p=d.data();
- const mine=currentUser.uid===p.uid;
+ snap.forEach(doc=>{
+ const d=doc.data();
  postList.innerHTML+=`
- <div class='card'>
- <b>${p.name}</b>
- <p>${p.text}</p>
- ${mine?`<button onclick="delPost('${d.id}')">삭제</button>`:''}
- <input placeholder='댓글' onkeydown="if(event.key==='Enter')addComment('${d.id}',this.value)">
- <div id='c_${d.id}'></div>
- </div>`;
-
- loadComments(d.id);
- })
- });
-}
-
-function addPost(){
- db.collection('posts').add({
- text:postText.value,
- uid:currentUser.uid,
- name:currentUser.email,
- time:Date.now()
- });
- postText.value="";
-}
-
-function delPost(id){db.collection('posts').doc(id).delete()}
-
-function addComment(pid,text){
- if(!text)return;
- db.collection('posts').doc(pid).collection('comments').add({
- text,uid:currentUser.uid,time:Date.now()
- });
-}
-
-function loadComments(pid){
- db.collection('posts').doc(pid).collection('comments').orderBy('time')
- .onSnapshot(s=>{
- const box=document.getElementById('c_'+pid);
- box.innerHTML="";
- s.forEach(d=>{
- box.innerHTML+=`<div style='font-size:13px;margin-top:4px'>${d.data().text}</div>`;
- })
- })
-}
-
-// ---------- CHAT ----------
-function openChatList(){
- tabT.classList.add('active');tabC.classList.remove('active');tabP.classList.remove('active');
- view.innerHTML="<div id='chatList'></div>";
-
- db.collection('rooms').onSnapshot(s=>{
- chatList.innerHTML="";
- s.forEach(d=>{
- const r=d.data();
- chatList.innerHTML+=`
- <div class='chat-row' onclick="openChat('${d.id}')">
- <div class='avatar'></div>
- <div>
- <b>${r.name}</b>
- <div style='font-size:12px;color:#aaa'>${r.last||''}</div>
+ <div class="card">
+ <h3>${d.title}</h3>
+ <p>${d.content}</p>
  </div>
- </div>`;
+ `;
  })
- });
-}
-
-function openChat(id){
- currentRoom=id;
- view.innerHTML=`
- <div id='msgs'></div>
- <input id='msgInput' placeholder='메시지' onkeydown="if(event.key==='Enter')sendMsg()">`;
-
- db.collection('rooms').doc(id).collection('msgs').orderBy('time')
- .onSnapshot(s=>{
- msgs.innerHTML="";
- s.forEach(d=>{
- const m=d.data();
- const me=m.uid===currentUser.uid;
- msgs.innerHTML+=`
- <div class='${me?'msg-right':'msg-left'}'>${m.text}</div>`;
- })
- });
-}
-
-function sendMsg(){
- db.collection('rooms').doc(currentRoom).collection('msgs').add({
- text:msgInput.value,
- uid:currentUser.uid,
- time:Date.now()
- });
- msgInput.value="";
-}
-
-// ---------- PROFILE ----------
-function openProfile(){
- tabP.classList.add('active');tabC.classList.remove('active');tabT.classList.remove('active');
- profileModal.style.display='flex';
-}
-
-async function saveProfile(){
- let url="";
- const f=avatarFile.files[0];
- if(f){
- const ref=storage.ref().child('avatar/'+currentUser.uid);
- await ref.put(f);
- url=await ref.getDownloadURL();
- }
- await db.collection('users').doc(currentUser.uid).set({
- nick:nickname.value,
- avatar:url
- });
- profileModal.style.display='none';
-}
+});
 </script>
+
 </body>
 </html>
+

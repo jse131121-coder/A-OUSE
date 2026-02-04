@@ -140,7 +140,6 @@ color:black;
 </div>
 
 <script>
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyAkPgNRTu9owSAYVIMBOdZcYaFhZV0UBnc",
   authDomain: "a-o-u-s-e.firebaseapp.com",
@@ -158,9 +157,11 @@ const db=firebase.firestore();
 
 let user=null;
 
+// ---------- UI ----------
 function openLogin(){loginBox.style.display="flex"}
 function openWrite(){writeBox.style.display="flex"}
 
+// ---------- LOGIN ----------
 function login(){
  auth.signInWithEmailAndPassword(email.value,pw.value)
  .catch(()=>auth.createUserWithEmailAndPassword(email.value,pw.value))
@@ -170,37 +171,146 @@ auth.onAuthStateChanged(u=>{
  user=u;
  if(u){
  userBar.innerHTML=`<button onclick="openWrite()">WRITE</button> <button onclick="auth.signOut()">LOGOUT</button>`;
+ loginBox.style.display="none";
  }
  else{
  userBar.innerHTML=`<button onclick="openLogin()">ARRIVE</button>`;
  }
 });
 
+// ---------- POST ----------
 function savePost(){
  db.collection("posts").add({
  title:title.value,
  content:content.value,
  uid:user.uid,
- time:Date.now()
+ time: firebase.firestore.FieldValue.serverTimestamp()
  });
  writeBox.style.display="none";
+ title.value="";
+ content.value="";
 }
 
+// ---------- MENTION ----------
+function renderMention(text){
+ return text.replace(/@(\w+)/g,
+ '<b style="color:#3b82f6">@$1</b>');
+}
+
+// ---------- LOAD POSTS ----------
 db.collection("posts").orderBy("time","desc")
 .onSnapshot(snap=>{
  postList.innerHTML="";
  snap.forEach(doc=>{
  const d=doc.data();
+ const id=doc.id;
+
  postList.innerHTML+=`
  <div class="card">
- <h3>${d.title}</h3>
- <p>${d.content}</p>
+  <h3>${d.title}</h3>
+  <p>${renderMention(d.content)}</p>
+
+  <div id="comment-${id}"></div>
+
+  <input placeholder="comment..."
+   onkeydown="if(event.key=='Enter') addComment('${id}',this.value)">
  </div>
  `;
+
+ loadComments(id);
  })
 });
+
+// ---------- COMMENTS ----------
+function addComment(postId,text){
+ if(!text.trim()) return;
+
+ db.collection("posts")
+ .doc(postId)
+ .collection("comments")
+ .add({
+  text:text,
+  uid:user.uid,
+  time: firebase.firestore.FieldValue.serverTimestamp()
+ });
+}
+
+function loadComments(postId){
+
+ db.collection("posts")
+ .doc(postId)
+ .collection("comments")
+ .orderBy("time")
+ .onSnapshot(snap=>{
+
+ let html="";
+
+ snap.forEach(doc=>{
+  const d=doc.data();
+  const cid=doc.id;
+
+  html+=`
+   <div style="margin-left:10px;font-size:14px">
+    💬 ${renderMention(d.text)}
+
+    <input placeholder="reply..."
+     onkeydown="if(event.key=='Enter') addReply('${postId}','${cid}',this.value)">
+
+    <div id="reply-${cid}"></div>
+   </div>
+  `;
+
+  loadReplies(postId,cid);
+ });
+
+ document.getElementById("comment-"+postId).innerHTML=html;
+ })
+}
+
+// ---------- REPLIES ----------
+function addReply(postId,commentId,text){
+ if(!text.trim()) return;
+
+ db.collection("posts")
+ .doc(postId)
+ .collection("comments")
+ .doc(commentId)
+ .collection("replies")
+ .add({
+  text:text,
+  uid:user.uid,
+  time: firebase.firestore.FieldValue.serverTimestamp()
+ });
+}
+
+function loadReplies(postId,commentId){
+
+ db.collection("posts")
+ .doc(postId)
+ .collection("comments")
+ .doc(commentId)
+ .collection("replies")
+ .orderBy("time")
+ .onSnapshot(snap=>{
+
+ let html="";
+
+ snap.forEach(doc=>{
+  const d=doc.data();
+  html+=`
+   <div style="margin-left:25px;color:#555">
+    ↳ ${renderMention(d.text)}
+   </div>
+  `;
+ });
+
+ const box=document.getElementById("reply-"+commentId);
+ if(box) box.innerHTML=html;
+ })
+}
 </script>
 
 </body>
 </html>
+
 
